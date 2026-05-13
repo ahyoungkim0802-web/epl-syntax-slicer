@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPL Syntax Slicer</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.css">
+<style>
+/* ═══════════════════════════════════════
+   디자인 시스템 변수
+   ═══════════════════════════════════════ */
+:root {
+  --bg-primary:#FAF8F5;--bg-secondary:#F0EBE3;--bg-card:#FFFFFF;
+  --text-primary:#2C2C2C;--text-muted:#6B6258;--border:#D4CFC4;
+  --accent-primary:#2E5266;--accent-secondary:#C97B5F;--accent-success:#5B7553;--accent-warning:#B5734A;
+  --tag-S:#1E3A52;--tag-V:#8B5E3C;--tag-O:#A88456;--tag-C:#7A6B8F;--tag-M:#8B8378;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg-primary);color:var(--text-primary);font-family:'Pretendard',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+.wrap{max-width:1120px;margin:0 auto;padding:24px 20px 80px}
+
+/* ── 헤더 ── */
+.header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.header-brand{font-size:28px;font-weight:700;color:var(--accent-primary);letter-spacing:-.02em}
+.header-sub{font-size:13px;color:var(--text-muted);margin-top:2px}
+.header-right{display:flex;gap:10px}
+
+/* ── 카드 공통 ── */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px}
+
+/* ── 입력 영역 ── */
+.input-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:16px}
+textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:14px;font-family:inherit;font-size:15px;line-height:1.6;resize:vertical;min-height:120px;color:var(--text-primary);background:var(--bg-primary)}
+textarea:focus{outline:none;border-color:var(--accent-primary)}
+.word-count{font-size:12px;color:var(--text-muted);text-align:right;margin-top:4px}
+
+/* ── 세그먼트 컨트롤 ── */
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.seg label{padding:8px 18px;font-size:13px;font-weight:500;cursor:pointer;border-right:1px solid var(--border);color:var(--text-muted);transition:all .15s}
+.seg label:last-child{border-right:none}
+.seg input{display:none}
+.seg input:checked+span{background:var(--accent-primary);color:#fff}
+.seg label span{display:block;padding:8px 18px;margin:-8px -18px}
+
+/* ── 버튼 ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--accent-primary);color:#fff}.btn-primary:hover:not(:disabled){background:#24435a}
+.btn-secondary{background:transparent;color:var(--text-primary);border:1px solid var(--border)}.btn-secondary:hover{background:var(--bg-secondary)}
+.btn-accent{background:var(--accent-secondary);color:#fff}.btn-accent:hover:not(:disabled){background:#b06a50}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-gold{background:var(--accent-warning);color:#fff}.btn-gold:hover:not(:disabled){background:#a0643e}
+
+select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;background:var(--bg-card);color:var(--text-primary);cursor:pointer}
+
+/* ── 토글 바 ── */
+.toggle-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;padding:14px 0}
+.toggle-bar label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:6px;transition:all .15s;user-select:none}
+.toggle-bar label:has(input:checked){background:var(--accent-primary);color:#fff;border-color:var(--accent-primary)}
+.toggle-bar input{display:none}
+
+/* ── 액션 바 ── */
+.action-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+
+/* ── 출력 카드 ── */
+.sent-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;overflow:hidden}
+.sent-head{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg-secondary)}
+.pattern-chip{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--accent-primary);background:rgba(46,82,102,.08);padding:4px 12px;border-radius:4px}
+.copy-btn{font-size:12px;color:var(--text-muted);cursor:pointer;background:none;border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-family:inherit;transition:all .15s}
+.copy-btn:hover{background:var(--accent-primary);color:#fff;border-color:var(--accent-primary)}
+
+/* ── 청크 영역 ── */
+.chunks{display:flex;flex-wrap:wrap;padding:20px 24px;gap:0}
+.chunk{flex:0 0 auto;padding:12px 16px;text-align:center;border-right:1px solid var(--border);min-width:80px}
+.chunk:last-child{border-right:none}
+.chunk-ko{font-size:13px;color:var(--text-muted);margin-bottom:6px;line-height:1.4}
+.chunk-en{font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;line-height:1.3}
+.chunk-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:3px;color:#fff}
+.tag-S{background:var(--tag-S)}.tag-V{background:var(--tag-V)}.tag-O{background:var(--tag-O)}.tag-C{background:var(--tag-C)}.tag-M{background:var(--tag-M)}
+
+/* ── 해석·어휘 ── */
+.sent-trans{padding:14px 24px;border-top:1px solid var(--border);font-size:14px;color:var(--text-primary);background:rgba(46,82,102,.03)}
+.sent-trans strong{color:var(--accent-primary);font-weight:600;margin-right:6px}
+.sent-vocab{padding:14px 24px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted)}
+.sent-vocab strong{color:var(--accent-warning);font-weight:600;margin-right:6px}
+.vocab-item{display:inline-block;margin-right:16px}
+.vocab-word{font-weight:600;color:var(--text-primary)}
+.vocab-pos{font-size:11px;color:var(--text-muted);margin:0 2px}
+
+/* ── 숨기기 ── */
+.hide-ko .chunk-ko{visibility:hidden}
+.hide-en .chunk-en{visibility:hidden}
+.hide-tag .chunk-tag{visibility:hidden}
+.hide-vocab .sent-vocab{display:none}
+.hide-trans .sent-trans{display:none}
+
+/* ── 히스토리 ── */
+.history-list{margin-top:16px}
+.hist-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-secondary);border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:13px;transition:all .15s}
+.hist-item:hover{background:var(--border)}
+.hist-item-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:12px}
+.hist-item-meta{font-size:11px;color:var(--text-muted);flex-shrink:0}
+
+/* ── 로딩 ── */
+.loading{display:none;text-align:center;padding:48px 20px}
+.loading.show{display:block}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text-muted)}
+
+/* ── 토스트 ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text-primary);color:#fff;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;transition:transform .3s ease;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── 인쇄 ── */
+@media print{
+  .header,.card,.toggle-bar,.action-bar,.history-list,.toast,.loading,.btn{display:none!important}
+  .sent-card{break-inside:avoid;box-shadow:none;border:1px solid #ddd}
+  body{background:#fff}
+  .wrap{max-width:100%;padding:0}
+  #output{display:block!important}
+}
+.worksheet .chunk-ko{background:var(--bg-secondary);color:transparent;border-radius:3px;min-height:20px}
+
+/* ── 반응형 ── */
+@media(max-width:768px){
+  .wrap{padding:16px 12px 60px}
+  .header{flex-direction:column;align-items:flex-start;gap:12px}
+  .input-row{flex-direction:column}
+  .chunk{min-width:60px;padding:10px 12px}
+  .chunk-en{font-size:15px}
+  .chunks{gap:0}
+  .toggle-bar{gap:4px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ═══ 헤더 ═══ -->
+<div class="header">
+  <div>
+    <div class="header-brand">EPL Syntax Slicer</div>
+    <div class="header-sub">EPL 영어학원 · Syntax Lab · 의미 단위 분석기</div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-sm btn-secondary" onclick="printPdf()">📄 PDF</button>
+    <button class="btn btn-sm btn-secondary" onclick="shareLink()">🔗 공유</button>
+    <button class="btn btn-sm btn-secondary" onclick="printWorksheet()">📝 워크시트</button>
+  </div>
+</div>
+
+<!-- ═══ 입력 영역 ═══ -->
+<div class="card" id="input-card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h2 style="font-size:16px;font-weight:700">영어 본문 입력</h2>
+    <select id="sample-select" onchange="loadSample(this.value)">
+      <option value="">📚 샘플 본문 선택</option>
+      <option value="0">예비중 · 동물 이야기</option>
+      <option value="1">중1 · 음식과 건강</option>
+      <option value="2">중2 · 기술과 생활</option>
+    </select>
+  </div>
+  <textarea id="input-text" placeholder="영어 본문을 붙여넣으세요 (최대 700단어)" oninput="updateWordCount()"></textarea>
+  <div class="word-count"><span id="wc">0</span> / 700 단어</div>
+  <div class="input-row">
+    <div class="seg">
+      <label><input type="radio" name="level" value="예비중" checked><span>예비중</span></label>
+      <label><input type="radio" name="level" value="중1"><span>중1</span></label>
+      <label><input type="radio" name="level" value="중2"><span>중2</span></label>
+    </div>
+    <button class="btn btn-primary" id="analyze-btn" onclick="analyze()">분석하기</button>
+    <button class="btn btn-secondary" onclick="resetAll()">초기화</button>
+    <button class="btn btn-gold btn-sm" onclick="mockTest()">Mock 테스트</button>
+  </div>
+</div>
+
+<!-- ═══ 로딩 ═══ -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">문장을 분석하고 있습니다…</div>
+</div>
+
+<!-- ═══ 학습 모드 토글 ═══ -->
+<div class="toggle-bar" id="toggle-bar" style="display:none">
+  <label><input type="checkbox" id="tog-ko" onchange="applyToggles()">🇰🇷 한국어 숨기기</label>
+  <label><input type="checkbox" id="tog-en" onchange="applyToggles()">🇬🇧 영어 숨기기</label>
+  <label><input type="checkbox" id="tog-tag" onchange="applyToggles()">🏷️ 태그 숨기기</label>
+  <label><input type="checkbox" id="tog-vocab" onchange="applyToggles()">📖 어휘 숨기기</label>
+  <label><input type="checkbox" id="tog-trans" onchange="applyToggles()">📘 해석 숨기기</label>
+</div>
+
+<!-- ═══ 출력 영역 ═══ -->
+<div id="output"></div>
+
+<!-- ═══ 히스토리 ═══ -->
+<div class="card" id="history-card">
+  <h3 style="font-size:14px;font-weight:700;margin-bottom:8px">📋 최근 분석 기록</h3>
+  <div class="history-list" id="history-list"><p style="font-size:13px;color:var(--text-muted)">아직 기록이 없습니다.</p></div>
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   상수 (수정 가이드: 이 부분의 값을 변경하세요)
+   ═══════════════════════════════════════ */
+
+// Cloudflare Worker URL — 실제 워커 URL로 변경하세요
+const WORKER_URL = 'https://bitter-leaf-eb4d.ahyoungkim0802.workers.dev';
+
+// 기본 레벨
+const DEFAULT_LEVEL = '예비중';
+
+// 샘플 본문
+const SAMPLE_TEXTS = [
+  "The sun was shining brightly. Birds were singing in the trees. A little rabbit hopped across the green field. It found some carrots near the garden. The rabbit ate the carrots happily.",
+  "Many people around the world enjoy different kinds of food. Some people eat rice every day. But some people don't want to eat meat or fish. They choose to eat only vegetables and fruits. This is called being a vegetarian.",
+  "Technology has changed the way we live. Smartphones allow us to communicate with anyone instantly. However, too much screen time can affect our health. Scientists recommend limiting device usage to two hours per day. Finding a balance between technology and real life is important."
+];
+
+// 시스템 프롬프트
+const SYSTEM_PROMPT = `당신은 EPL 영어학원의 신택스 분석 어시스턴트입니다.
+한국 예비중~중1 학생이 영어 문장을 의미 단위로 이해할 수 있도록,
+영어 본문을 분석해 아래 정확한 JSON 형식으로만 응답합니다.
+
+분석 규칙:
+1. 입력 본문을 문장 단위로 나눈 뒤, 각 문장을 다시 의미 단위(주어/동사/목적어/보어/수식어구)로 분할합니다.
+2. 의미 단위는 학생이 한 호흡에 이해할 수 있는 크기로 끊습니다.
+3. 각 단위의 한국어 뜻은 자연스러운 한국어 어휘로 번역합니다. "의" 남발 금지, 직역체 금지.
+4. 전체 해석은 한국어 어순에 맞춰 한 문장으로 다듬어 제공합니다.
+5. 5형식 패턴: "S+V", "S+V+C", "S+V+O", "S+V+IO+DO", "S+V+O+OC"
+6. 태그: "S"(주어), "V"(동사), "O"(목적어), "C"(보어), "M"(수식어)
+7. 어휘는 해당 레벨 학생에게 어려울 만한 단어만 2~5개. pos는 "n.", "v.", "adj.", "adv.", "prep.", "conj." 중 하나.
+8. JSON 외 다른 텍스트 절대 출력 금지.
+
+응답 형식:
+{"sentences":[{"id":1,"original":"원문","pattern":"S+V+O","chunks":[{"en":"영어","ko":"한국어","tag":"S"}],"translation":"전체 해석","vocab":[{"word":"단어","meaning":"뜻","pos":"n."}]}]}`;
+
+// Mock 데이터 (워커 없이 UI 테스트용)
+const MOCK_RESPONSE = {"sentences":[
+  {"id":1,"original":"The sun was shining brightly.","pattern":"S+V","chunks":[{"en":"The sun","ko":"태양은","tag":"S"},{"en":"was shining","ko":"빛나고 있었다","tag":"V"},{"en":"brightly","ko":"밝게","tag":"M"}],"translation":"태양이 밝게 빛나고 있었다.","vocab":[{"word":"brightly","meaning":"밝게","pos":"adv."}]},
+  {"id":2,"original":"Birds were singing in the trees.","pattern":"S+V","chunks":[{"en":"Birds","ko":"새들은","tag":"S"},{"en":"were singing","ko":"노래하고 있었다","tag":"V"},{"en":"in the trees","ko":"나무에서","tag":"M"}],"translation":"새들이 나무에서 노래하고 있었다.","vocab":[{"word":"singing","meaning":"노래하다","pos":"v."}]},
+  {"id":3,"original":"A little rabbit hopped across the green field.","pattern":"S+V","chunks":[{"en":"A little rabbit","ko":"작은 토끼가","tag":"S"},{"en":"hopped","ko":"깡충 뛰었다","tag":"V"},{"en":"across the green field","ko":"초록 들판을 가로질러","tag":"M"}],"translation":"작은 토끼가 초록 들판을 가로질러 깡충 뛰었다.","vocab":[{"word":"rabbit","meaning":"토끼","pos":"n."},{"word":"hopped","meaning":"깡충 뛰다","pos":"v."},{"word":"field","meaning":"들판","pos":"n."}]},
+  {"id":4,"original":"It found some carrots near the garden.","pattern":"S+V+O","chunks":[{"en":"It","ko":"토끼는","tag":"S"},{"en":"found","ko":"발견했다","tag":"V"},{"en":"some carrots","ko":"당근 몇 개를","tag":"O"},{"en":"near the garden","ko":"정원 근처에서","tag":"M"}],"translation":"토끼는 정원 근처에서 당근 몇 개를 발견했다.","vocab":[{"word":"carrot","meaning":"당근","pos":"n."},{"word":"garden","meaning":"정원","pos":"n."}]},
+  {"id":5,"original":"The rabbit ate the carrots happily.","pattern":"S+V+O","chunks":[{"en":"The rabbit","ko":"토끼는","tag":"S"},{"en":"ate","ko":"먹었다","tag":"V"},{"en":"the carrots","ko":"당근을","tag":"O"},{"en":"happily","ko":"행복하게","tag":"M"}],"translation":"토끼는 행복하게 당근을 먹었다.","vocab":[{"word":"happily","meaning":"행복하게","pos":"adv."}]}
+]};
+
+/* ═══════════════════════════════════════
+   상태
+   ═══════════════════════════════════════ */
+let currentResult = null;
+
+/* ═══════════════════════════════════════
+   유틸리티
+   ═══════════════════════════════════════ */
+
+// 토스트 메시지
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// 단어 수 카운터
+function updateWordCount() {
+  const text = document.getElementById('input-text').value.trim();
+  const count = text ? text.split(/\s+/).length : 0;
+  document.getElementById('wc').textContent = count;
+  if (count > 700) document.getElementById('wc').style.color = 'var(--accent-secondary)';
+  else document.getElementById('wc').style.color = 'var(--text-muted)';
+}
+
+// 레벨 가져오기
+function getLevel() {
+  const checked = document.querySelector('input[name="level"]:checked');
+  return checked ? checked.value : DEFAULT_LEVEL;
+}
+
+// 샘플 불러오기
+function loadSample(idx) {
+  if (idx === '') return;
+  document.getElementById('input-text').value = SAMPLE_TEXTS[parseInt(idx)];
+  updateWordCount();
+  document.getElementById('sample-select').value = '';
+}
+
+// 초기화
+function resetAll() {
+  document.getElementById('input-text').value = '';
+  document.getElementById('output').innerHTML = '';
+  document.getElementById('toggle-bar').style.display = 'none';
+  currentResult = null;
+  updateWordCount();
+}
+
+/* ═══════════════════════════════════════
+   AI 분석
+   ═══════════════════════════════════════ */
+async function analyze() {
+  const text = document.getElementById('input-text').value.trim();
+  if (!text) { toast('영어 본문을 입력해주세요.'); return; }
+  const level = getLevel();
+  const btn = document.getElementById('analyze-btn');
+  const loading = document.getElementById('loading');
+
+  btn.disabled = true;
+  loading.classList.add('show');
+  document.getElementById('output').innerHTML = '';
+
+  const userPrompt = `레벨: ${level}\n\n본문:\n${text}\n\n위 본문을 분석해 지정된 JSON 형식으로만 응답하세요.`;
+
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    const data = await res.json();
+    let raw = '';
+    if (data.content && data.content[0]) raw = data.content[0].text;
+    else if (data.sentences) raw = JSON.stringify(data);
+    else if (data.error) throw new Error(data.error.message || data.error);
+    else throw new Error('응답 형식 오류');
+
+    // 코드펜스 제거
+    raw = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const parsed = JSON.parse(raw);
+
+    if (!parsed.sentences || !Array.isArray(parsed.sentences)) throw new Error('sentences 배열이 없습니다.');
+
+    currentResult = parsed;
+    renderCards(parsed);
+    saveHistory(text, level, parsed);
+    toast('분석 완료! ' + parsed.sentences.length + '개 문장');
+
+  } catch (e) {
+    console.error('분석 오류:', e);
+    document.getElementById('output').innerHTML = `<div class="card" style="text-align:center;padding:32px">
+      <p style="font-size:15px;margin-bottom:12px">⚠️ ${e.message || '분석 결과를 받지 못했습니다.'}</p>
+      <button class="btn btn-primary" onclick="analyze()">다시 시도</button>
+    </div>`;
+  } finally {
+    btn.disabled = false;
+    loading.classList.remove('show');
+  }
+}
+
+// Mock 테스트
+function mockTest() {
+  currentResult = MOCK_RESPONSE;
+  document.getElementById('input-text').value = SAMPLE_TEXTS[0];
+  updateWordCount();
+  renderCards(MOCK_RESPONSE);
+  toast('Mock 데이터로 렌더링 완료');
+}
+
+/* ═══════════════════════════════════════
+   카드 렌더링
+   ═══════════════════════════════════════ */
+function renderCards(data) {
+  const out = document.getElementById('output');
+  out.innerHTML = '';
+  document.getElementById('toggle-bar').style.display = 'flex';
+
+  data.sentences.forEach((s, idx) => {
+    const chunksHtml = s.chunks.map(c => `
+      <div class="chunk">
+        <div class="chunk-ko">${esc(c.ko)}</div>
+        <div class="chunk-en">${esc(c.en)}</div>
+        <span class="chunk-tag tag-${c.tag}">${c.tag}</span>
+      </div>
+    `).join('');
+
+    const vocabHtml = (s.vocab || []).map(v =>
+      `<span class="vocab-item"><span class="vocab-word">${esc(v.word)}</span> <span class="vocab-pos">${esc(v.pos)}</span> ${esc(v.meaning)}</span>`
+    ).join('');
+
+    out.innerHTML += `
+      <div class="sent-card">
+        <div class="sent-head">
+          <span class="pattern-chip">❶ ${esc(s.pattern)}</span>
+          <button class="copy-btn" onclick="copySentence(${idx})">복사</button>
+        </div>
+        <div class="chunks">${chunksHtml}</div>
+        <div class="sent-trans"><strong>📘 전체 해석</strong>${esc(s.translation)}</div>
+        ${vocabHtml ? `<div class="sent-vocab"><strong>📖 어휘</strong>${vocabHtml}</div>` : ''}
+      </div>
+    `;
+  });
+
+  // 패턴 번호 수정
+  out.querySelectorAll('.pattern-chip').forEach((el, i) => {
+    el.innerHTML = el.innerHTML.replace('❶', '⑴'.replace('⑴', String(i + 1)));
+    el.textContent = `${String(i + 1).padStart(2, '0')} ${data.sentences[i].pattern}`;
+  });
+
+  applyToggles();
+}
+
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 문장 복사
+function copySentence(idx) {
+  if (!currentResult) return;
+  const s = currentResult.sentences[idx];
+  const text = s.original + '\n' + s.translation;
+  navigator.clipboard.writeText(text).then(() => toast('복사됨!')).catch(() => toast('복사 실패'));
+}
+
+/* ═══════════════════════════════════════
+   학습 모드 토글
+   ═══════════════════════════════════════ */
+function applyToggles() {
+  const body = document.body;
+  const ids = ['ko', 'en', 'tag', 'vocab', 'trans'];
+  ids.forEach(id => {
+    const on = document.getElementById('tog-' + id).checked;
+    body.classList.toggle('hide-' + id, on);
+    localStorage.setItem('tog_' + id, on ? '1' : '0');
+  });
+}
+
+function loadToggles() {
+  ['ko', 'en', 'tag', 'vocab', 'trans'].forEach(id => {
+    const saved = localStorage.getItem('tog_' + id);
+    if (saved === '1') document.getElementById('tog-' + id).checked = true;
+  });
+}
+
+/* ═══════════════════════════════════════
+   히스토리
+   ═══════════════════════════════════════ */
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('syntax_history') || '[]'); } catch { return []; }
+}
+function saveHistory(text, level, result) {
+  const hist = getHistory();
+  hist.unshift({ text: text.substring(0, 100), level, date: new Date().toLocaleString('ko-KR'), fullText: text, result });
+  if (hist.length > 5) hist.length = 5;
+  localStorage.setItem('syntax_history', JSON.stringify(hist));
+  renderHistory();
+}
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const hist = getHistory();
+  if (!hist.length) { list.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">아직 기록이 없습니다.</p>'; return; }
+  list.innerHTML = hist.map((h, i) => `
+    <div class="hist-item" onclick="loadHistory(${i})">
+      <div class="hist-item-text">${esc(h.text)}…</div>
+      <div class="hist-item-meta">${h.level} · ${h.date}</div>
+    </div>
+  `).join('');
+}
+function loadHistory(idx) {
+  const hist = getHistory();
+  const h = hist[idx];
+  if (!h) return;
+  document.getElementById('input-text').value = h.fullText;
+  updateWordCount();
+  if (h.result) { currentResult = h.result; renderCards(h.result); }
+}
+
+/* ═══════════════════════════════════════
+   액션: PDF / 공유 / 워크시트
+   ═══════════════════════════════════════ */
+function printPdf() {
+  if (!currentResult) { toast('먼저 분석을 실행해주세요.'); return; }
+  window.print();
+}
+
+function shareLink() {
+  const text = document.getElementById('input-text').value.trim();
+  if (!text) { toast('본문을 입력해주세요.'); return; }
+  const level = getLevel();
+  const encoded = btoa(unescape(encodeURIComponent(text)));
+  const url = location.origin + location.pathname + '?text=' + encoded + '&level=' + encodeURIComponent(level);
+  navigator.clipboard.writeText(url).then(() => toast('공유 링크가 복사되었습니다!')).catch(() => toast('복사 실패'));
+}
+
+function printWorksheet() {
+  if (!currentResult) { toast('먼저 분석을 실행해주세요.'); return; }
+  document.body.classList.add('hide-ko', 'worksheet');
+  setTimeout(() => { window.print(); document.body.classList.remove('hide-ko', 'worksheet'); applyToggles(); }, 100);
+}
+
+/* ═══════════════════════════════════════
+   URL 파라미터 자동 입력
+   ═══════════════════════════════════════ */
+function checkUrlParams() {
+  const params = new URLSearchParams(location.search);
+  const textB64 = params.get('text');
+  const level = params.get('level');
+  if (textB64) {
+    try {
+      const text = decodeURIComponent(escape(atob(textB64)));
+      document.getElementById('input-text').value = text;
+      updateWordCount();
+      if (level) {
+        document.querySelectorAll('input[name="level"]').forEach(r => { r.checked = r.value === level; });
+      }
+      // 자동 분석은 하지 않음 — 사용자가 직접 버튼 클릭
+      toast('공유된 본문을 불러왔습니다. 분석하기를 눌러주세요.');
+    } catch (e) { console.warn('URL 파라미터 디코딩 실패:', e); }
+  }
+}
+
+/* ═══════════════════════════════════════
+   초기화
+   ═══════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  loadToggles();
+  renderHistory();
+  checkUrlParams();
+});
+
+/* ═══════════════════════════════════════
+   수정 가이드
+   ───────────────────────────────────────
+   1. Worker URL 변경:
+      → 파일 최상단 WORKER_URL 상수
+   2. 색상 변경:
+      → <style> 내 :root 변수
+   3. 폰트 변경:
+      → <link> 태그의 CDN URL + body font-family
+   4. 샘플 본문 변경:
+      → SAMPLE_TEXTS 배열 (3개)
+   5. 태그 색상 변경:
+      → :root의 --tag-S ~ --tag-M 변수
+   6. AI 모델 변경:
+      → analyze() 함수 내 model 값
+   7. 시스템 프롬프트 변경:
+      → SYSTEM_PROMPT 상수
+   ═══════════════════════════════════════ */
+</script>
+</body>
+</html>
