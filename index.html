@@ -78,13 +78,20 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
 .sent-original .orig-chunk.orig-V{}
 .sent-original .orig-verb{display:inline;border:2px solid var(--tag-V);border-radius:50%;padding:2px 6px}
 
-/* ── 청크 영역 (한국어 칸 + 태그만, 영어는 원문에서) ── */
-.chunks{display:flex;flex-wrap:wrap;padding:4px 28px 20px;align-items:stretch}
-.chunk{flex:1 0 auto;padding:14px 20px;text-align:center;border-right:1px solid var(--border);min-width:90px;position:relative}
-.chunk:last-child{border-right:none}
+/* ── 청크 영역 (메인 줄 + 수식어 가지치기) ── */
+.chunks-wrap{padding:4px 28px 20px}
+.chunks-main{display:flex;align-items:stretch}
+.chunk-col{flex:1 0 auto;min-width:90px;position:relative}
+.chunk-col:not(:last-child){border-right:1px solid var(--border)}
+.chunk-cell{padding:14px 20px;text-align:center}
 .chunk-ko{font-size:15px;color:var(--text-primary);line-height:1.5;font-weight:500}
 .chunk-en{display:none}
 .chunk-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:3px;color:#fff;margin-top:8px}
+/* 가지치기 (수식어 M) */
+.chunk-branch{position:relative;margin-left:auto;border-left:1px solid var(--border);border-bottom:1px solid var(--border);border-right:1px solid var(--border);margin-top:0;width:fit-content;min-width:120px}
+.chunk-branch .chunk-cell{padding:10px 18px}
+.chunk-branch .chunk-ko{font-size:13px;color:var(--text-muted)}
+.chunk-branch-connector{width:1px;height:8px;background:var(--border);margin-left:auto;margin-right:40%}
 .tag-S{background:var(--tag-S)}.tag-V{background:var(--tag-V)}.tag-O{background:var(--tag-O)}.tag-C{background:var(--tag-C)}.tag-M{background:var(--tag-M)}
 
 /* ── 해석 (하단 박스) ── */
@@ -101,6 +108,7 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
 
 /* ── 숨기기 ── */
 .hide-ko .chunk-ko{visibility:hidden}
+.hide-ko .chunk-branch .chunk-ko{visibility:hidden}
 .hide-en .sent-original{visibility:hidden}
 .hide-tag .chunk-tag{visibility:hidden}
 .hide-vocab .sent-vocab{display:none}
@@ -467,14 +475,40 @@ function renderCards(data) {
       return `<span class="orig-chunk">${esc(c.en)}</span>`;
     }).join(' ');
 
-    // 청크: 한국어 위 / 구분선 / 영어 아래
-    const chunksHtml = s.chunks.map(c => `
-      <div class="chunk">
-        <div class="chunk-ko">${esc(c.ko)}</div>
-        <div class="chunk-en">${esc(c.en)}</div>
-        <span class="chunk-tag tag-${c.tag}">${c.tag}</span>
-      </div>
-    `).join('');
+    // 청크를 메인(S/V/O/C)과 가지(M)로 분리
+    // M은 바로 앞의 비-M 청크 아래에 붙음
+    const columns = []; // [{main: chunk, branches: [chunk, ...]}]
+    s.chunks.forEach(c => {
+      if (c.tag !== 'M') {
+        columns.push({ main: c, branches: [] });
+      } else {
+        // M은 마지막 컬럼의 가지로 추가 (없으면 독립 컬럼)
+        if (columns.length > 0) {
+          columns[columns.length - 1].branches.push(c);
+        } else {
+          columns.push({ main: c, branches: [] });
+        }
+      }
+    });
+
+    const chunksHtml = '<div class="chunks-main">' + columns.map(col => {
+      let html = '<div class="chunk-col"><div class="chunk-cell">';
+      html += `<div class="chunk-ko">${esc(col.main.ko)}</div>`;
+      html += `<div class="chunk-en">${esc(col.main.en)}</div>`;
+      html += `<span class="chunk-tag tag-${col.main.tag}">${col.main.tag}</span>`;
+      html += '</div>';
+      // 가지치기 (M 수식어)
+      col.branches.forEach(b => {
+        html += '<div class="chunk-branch-connector"></div>';
+        html += '<div class="chunk-branch"><div class="chunk-cell">';
+        html += `<div class="chunk-ko">${esc(b.ko)}</div>`;
+        html += `<div class="chunk-en">${esc(b.en)}</div>`;
+        html += `<span class="chunk-tag tag-${b.tag}">${b.tag}</span>`;
+        html += '</div></div>';
+      });
+      html += '</div>';
+      return html;
+    }).join('') + '</div>';
 
     const vocabHtml = (s.vocab || []).map(v =>
       `<span class="vocab-item"><span class="vocab-word">${esc(v.word)}</span> <span class="vocab-pos">${esc(v.pos)}</span> ${esc(v.meaning)}</span>`
@@ -489,7 +523,7 @@ function renderCards(data) {
           <button class="copy-btn" onclick="copySentence(${idx})">복사</button>
         </div>
         <div class="sent-original">${origHtml}</div>
-        <div class="chunks">${chunksHtml}</div>
+        <div class="chunks-wrap">${chunksHtml}</div>
         <div class="sent-trans"><span class="sent-trans-icon">📘</span><div class="sent-trans-text">${esc(s.translation)}</div></div>
         ${vocabHtml ? `<div class="sent-vocab"><strong>📖 어휘</strong>${vocabHtml}</div>` : ''}
       </div>
