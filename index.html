@@ -124,6 +124,28 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text-primary);color:#fff;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;transition:transform .3s ease;pointer-events:none}
 .toast.show{transform:translateX(-50%) translateY(0)}
 
+/* ── 답지 모달 ── */
+.answer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;justify-content:center;align-items:flex-start;padding:24px;overflow-y:auto}
+.answer-overlay.show{display:flex}
+.answer-sheet{background:#fff;max-width:800px;width:100%;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.15);overflow:hidden}
+.answer-header{display:flex;justify-content:space-between;align-items:center;padding:20px 28px;background:var(--accent-primary);color:#fff}
+.answer-header h2{font-size:18px;font-weight:700}
+.answer-header button{background:none;border:none;color:#fff;font-size:22px;cursor:pointer}
+.answer-body{padding:28px}
+.answer-sent{margin-bottom:28px;page-break-inside:avoid}
+.answer-sent-num{font-size:14px;font-weight:700;color:var(--accent-primary);margin-bottom:6px}
+.answer-sent-orig{font-size:17px;font-weight:500;color:var(--text-primary);margin-bottom:12px;line-height:1.6}
+.answer-table{width:100%;border-collapse:collapse;margin-bottom:12px}
+.answer-table th{background:var(--bg-secondary);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 12px;text-align:center;border:1px solid var(--border);color:var(--text-muted)}
+.answer-table td{padding:8px 12px;text-align:center;border:1px solid var(--border);font-size:14px;vertical-align:middle}
+.answer-table .td-tag{font-size:11px;font-weight:700;color:#fff;border-radius:3px;padding:2px 8px;display:inline-block}
+.answer-trans{font-size:14px;color:var(--text-primary);background:rgba(46,82,102,.04);padding:10px 14px;border-radius:4px;margin-bottom:8px;line-height:1.6}
+.answer-vocab{font-size:13px;color:var(--text-muted);line-height:1.8}
+.answer-vocab b{color:var(--text-primary)}
+.answer-actions{padding:16px 28px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:var(--bg-secondary)}
+
+@media print{.answer-overlay{position:static!important;display:block!important;background:none!important;padding:0!important}.answer-sheet{box-shadow:none!important;border-radius:0!important}.answer-actions{display:none!important}.answer-header button{display:none!important}}
+
 /* ── 인쇄 ── */
 @media print{
   .header,.card,.toggle-bar,.action-bar,.history-list,.toast,.loading,.btn{display:none!important}
@@ -159,6 +181,7 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
     <button class="btn btn-sm btn-secondary" onclick="printPdf()">📄 PDF</button>
     <button class="btn btn-sm btn-secondary" onclick="shareLink()">🔗 공유</button>
     <button class="btn btn-sm btn-secondary" onclick="printWorksheet()">📝 워크시트</button>
+    <button class="btn btn-sm btn-accent" onclick="showAnswerSheet()">📋 분석답지</button>
   </div>
 </div>
 
@@ -217,6 +240,21 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
   <div class="history-list" id="history-list"><p style="font-size:13px;color:var(--text-muted)">아직 기록이 없습니다.</p></div>
 </div>
 
+</div>
+
+<!-- ═══ 분석답지 모달 ═══ -->
+<div class="answer-overlay" id="answer-overlay" onclick="if(event.target===this)closeAnswerSheet()">
+  <div class="answer-sheet">
+    <div class="answer-header">
+      <h2>📋 EPL Syntax Slicer — 분석답지</h2>
+      <button onclick="closeAnswerSheet()">✕</button>
+    </div>
+    <div class="answer-body" id="answer-body"></div>
+    <div class="answer-actions">
+      <button class="btn btn-primary" onclick="printAnswerSheet()">🖨 인쇄 / PDF</button>
+      <button class="btn btn-secondary" onclick="closeAnswerSheet()">닫기</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -539,6 +577,55 @@ function shareLink() {
   const encoded = btoa(unescape(encodeURIComponent(text)));
   const url = location.origin + location.pathname + '?text=' + encoded + '&level=' + encodeURIComponent(level);
   navigator.clipboard.writeText(url).then(() => toast('공유 링크가 복사되었습니다!')).catch(() => toast('복사 실패'));
+}
+
+// 분석답지 생성
+function showAnswerSheet() {
+  if (!currentResult) { toast('먼저 분석을 실행해주세요.'); return; }
+  const body = document.getElementById('answer-body');
+  const tagColors = {S:'var(--tag-S)',V:'var(--tag-V)',O:'var(--tag-O)',C:'var(--tag-C)',M:'var(--tag-M)'};
+
+  body.innerHTML = currentResult.sentences.map((s, i) => {
+    const chunkRows = s.chunks.map(c =>
+      `<tr>
+        <td><span class="td-tag" style="background:${tagColors[c.tag]||'#999'}">${c.tag}</span></td>
+        <td style="font-weight:600;text-align:left">${esc(c.en)}</td>
+        <td style="text-align:left;color:var(--text-muted)">${esc(c.ko)}</td>
+      </tr>`
+    ).join('');
+
+    const vocabHtml = (s.vocab||[]).map(v =>
+      `<b>${esc(v.word)}</b> <span style="color:var(--text-muted)">(${esc(v.pos)})</span> ${esc(v.meaning)}`
+    ).join(' &nbsp;·&nbsp; ');
+
+    return `
+      <div class="answer-sent">
+        <div class="answer-sent-num">${i+1}. <span style="font-weight:400;color:var(--text-muted);font-size:12px;margin-left:6px">${esc(s.pattern)}</span></div>
+        <div class="answer-sent-orig">${esc(s.original)}</div>
+        <table class="answer-table">
+          <thead><tr><th style="width:50px">태그</th><th style="text-align:left">영어</th><th style="text-align:left">한국어</th></tr></thead>
+          <tbody>${chunkRows}</tbody>
+        </table>
+        <div class="answer-trans">📘 ${esc(s.translation)}</div>
+        ${vocabHtml ? `<div class="answer-vocab">📖 ${vocabHtml}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('answer-overlay').classList.add('show');
+}
+
+function closeAnswerSheet() {
+  document.getElementById('answer-overlay').classList.remove('show');
+}
+
+function printAnswerSheet() {
+  const overlay = document.getElementById('answer-overlay');
+  // 답지만 인쇄
+  const origDisplay = document.querySelector('.wrap').style.display;
+  document.querySelector('.wrap').style.display = 'none';
+  window.print();
+  document.querySelector('.wrap').style.display = origDisplay;
 }
 
 function printWorksheet() {
