@@ -196,6 +196,10 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
       <option value="2">중2 · 기술과 생활</option>
     </select>
   </div>
+  <div style="display:flex;gap:10px;margin-bottom:10px">
+    <div style="flex:1"><label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">학생 이름</label><input type="text" id="student-name" placeholder="이름 입력" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit"></div>
+    <div style="flex:1"><label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">날짜</label><input type="date" id="student-date" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit"></div>
+  </div>
   <textarea id="input-text" placeholder="영어 본문을 붙여넣거나, 아래에서 파일을 첨부하세요 (최대 700단어)" oninput="updateWordCount()"></textarea>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
     <label class="btn btn-sm btn-secondary" style="margin:0;cursor:pointer">
@@ -584,7 +588,13 @@ function showAnswerSheet() {
   const body = document.getElementById('answer-body');
   const tagColors = {S:'var(--tag-S)',V:'var(--tag-V)',O:'var(--tag-O)',C:'var(--tag-C)',M:'var(--tag-M)'};
 
-  body.innerHTML = currentResult.sentences.map((s, i) => {
+  const info = getStudentInfo();
+  let headerHtml = `<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--accent-primary);padding-bottom:14px;margin-bottom:24px">
+    <div><div style="font-size:11px;color:var(--text-muted);letter-spacing:.08em">EPL 영어학원 · Syntax Lab</div></div>
+    <div style="text-align:right;font-size:13px;color:var(--text-muted);line-height:1.8">${info.name ? '<b>'+esc(info.name)+'</b> 학생 · ' : ''}${info.date}</div>
+  </div>`;
+
+  body.innerHTML = headerHtml + currentResult.sentences.map((s, i) => {
     const chunkRows = s.chunks.map(c =>
       `<tr>
         <td><span class="td-tag" style="background:${tagColors[c.tag]||'#999'}">${c.tag}</span></td>
@@ -619,18 +629,70 @@ function closeAnswerSheet() {
 }
 
 function printAnswerSheet() {
-  const overlay = document.getElementById('answer-overlay');
-  // 답지만 인쇄
-  const origDisplay = document.querySelector('.wrap').style.display;
-  document.querySelector('.wrap').style.display = 'none';
-  window.print();
-  document.querySelector('.wrap').style.display = origDisplay;
+  const content = document.getElementById('answer-body').innerHTML;
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.css"><style>
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Pretendard',sans-serif;padding:40px;color:#2C2C2C;font-size:14px;line-height:1.6}
+    .answer-sent{margin-bottom:24px;page-break-inside:avoid}
+    .answer-sent-num{font-size:14px;font-weight:700;color:#2E5266;margin-bottom:6px}
+    .answer-sent-orig{font-size:17px;font-weight:500;margin-bottom:12px;line-height:1.6}
+    .answer-table{width:100%;border-collapse:collapse;margin-bottom:12px}
+    .answer-table th{background:#F0EBE3;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 12px;text-align:center;border:1px solid #D4CFC4;color:#6B6258}
+    .answer-table td{padding:8px 12px;text-align:center;border:1px solid #D4CFC4;font-size:14px}
+    .td-tag{font-size:11px;font-weight:700;color:#fff;border-radius:3px;padding:2px 8px;display:inline-block}
+    .answer-trans{font-size:14px;background:rgba(46,82,102,.04);padding:10px 14px;border-radius:4px;margin-bottom:8px;line-height:1.6}
+    .answer-vocab{font-size:13px;color:#6B6258;line-height:1.8}
+    .answer-vocab b{color:#2C2C2C}
+    @media print{body{padding:24px}}
+  </style></head><body>${content}</body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 300);
+}
+
+function getStudentInfo() {
+  const name = document.getElementById('student-name').value.trim() || '';
+  const dateVal = document.getElementById('student-date').value;
+  const date = dateVal ? new Date(dateVal).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'}) : new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+  return { name, date };
 }
 
 function printWorksheet() {
   if (!currentResult) { toast('먼저 분석을 실행해주세요.'); return; }
-  document.body.classList.add('hide-ko', 'worksheet');
-  setTimeout(() => { window.print(); document.body.classList.remove('hide-ko', 'worksheet'); applyToggles(); }, 100);
+  const info = getStudentInfo();
+  const w = window.open('','_blank');
+  let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.css"><style>
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Pretendard',sans-serif;padding:40px;color:#2C2C2C;font-size:14px;line-height:1.6}
+    .ws-header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #2E5266;padding-bottom:16px;margin-bottom:24px}
+    .ws-title{font-size:22px;font-weight:700;color:#2E5266}.ws-sub{font-size:12px;color:#6B6258;margin-top:4px}
+    .ws-info{text-align:right;font-size:13px;color:#6B6258;line-height:1.8}
+    .ws-info b{color:#2C2C2C}
+    .ws-sent{margin-bottom:24px;page-break-inside:avoid}
+    .ws-num{font-size:13px;font-weight:700;color:#2E5266;margin-bottom:6px}
+    .ws-orig{font-size:18px;font-weight:500;margin-bottom:14px;line-height:1.6}
+    .ws-chunks{display:flex;flex-wrap:wrap;margin-bottom:12px}
+    .ws-chunk{flex:1 0 auto;text-align:center;padding:14px 16px;border-right:1px solid #D4CFC4;min-width:80px}
+    .ws-chunk:last-child{border-right:none}
+    .ws-blank{height:22px;border-bottom:1px dashed #D4CFC4;margin-bottom:6px}
+    .ws-tag{font-size:10px;font-weight:700;color:#fff;padding:2px 8px;border-radius:3px;display:inline-block;margin-top:4px}
+    .ws-trans{margin-top:8px;padding:10px 14px;border:1px dashed #D4CFC4;border-radius:4px;min-height:36px}
+    .ws-trans-label{font-size:11px;color:#6B6258;margin-bottom:4px}
+    .tag-S{background:#1E3A52}.tag-V{background:#8B5E3C}.tag-O{background:#A88456}.tag-C{background:#7A6B8F}.tag-M{background:#8B8378}
+    @media print{body{padding:24px}}
+  </style></head><body>`;
+
+  html += `<div class="ws-header"><div><div class="ws-title">EPL Syntax Slicer</div><div class="ws-sub">EPL 영어학원 · 의미 단위 분석 워크시트</div></div><div class="ws-info"><b>${esc(info.name) || '________'}</b> 학생<br>${info.date}</div></div>`;
+
+  currentResult.sentences.forEach((s, i) => {
+    const chunksHtml = s.chunks.map(c =>
+      `<div class="ws-chunk"><div class="ws-blank"></div><span class="ws-tag tag-${c.tag}">${c.tag}</span></div>`
+    ).join('');
+    html += `<div class="ws-sent"><div class="ws-num">${i+1}. ${esc(s.pattern)}</div><div class="ws-orig">${esc(s.original)}</div><div class="ws-chunks">${chunksHtml}</div><div class="ws-trans"><div class="ws-trans-label">📘 전체 해석</div></div></div>`;
+  });
+
+  html += `</body></html>`;
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 300);
 }
 
 /* ═══════════════════════════════════════
@@ -661,6 +723,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadToggles();
   renderHistory();
   checkUrlParams();
+  // 날짜 기본값: 오늘
+  document.getElementById('student-date').value = new Date().toISOString().split('T')[0];
 });
 
 /* ═══════════════════════════════════════
