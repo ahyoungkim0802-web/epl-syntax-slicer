@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EPL Syntax Slicer</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 /* ═══════════════════════════════════════
    디자인 시스템 변수
@@ -172,8 +173,14 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
       <option value="2">중2 · 기술과 생활</option>
     </select>
   </div>
-  <textarea id="input-text" placeholder="영어 본문을 붙여넣으세요 (최대 700단어)" oninput="updateWordCount()"></textarea>
-  <div class="word-count"><span id="wc">0</span> / 700 단어</div>
+  <textarea id="input-text" placeholder="영어 본문을 붙여넣거나, 아래에서 파일을 첨부하세요 (최대 700단어)" oninput="updateWordCount()"></textarea>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+    <label class="btn btn-sm btn-secondary" style="margin:0;cursor:pointer">
+      📎 워드/텍스트 파일 첨부 (.docx, .txt)
+      <input type="file" accept=".docx,.txt,.doc" style="display:none" onchange="loadFile(this)">
+    </label>
+    <div class="word-count" style="margin:0"><span id="wc">0</span> / 700 단어</div>
+  </div>
   <div class="input-row">
     <div class="seg">
       <label><input type="radio" name="level" value="예비중" checked><span>예비중</span></label>
@@ -289,6 +296,35 @@ function updateWordCount() {
 function getLevel() {
   const checked = document.querySelector('input[name="level"]:checked');
   return checked ? checked.value : DEFAULT_LEVEL;
+}
+
+// 파일 첨부 (DOCX / TXT)
+async function loadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  try {
+    let text = '';
+    if (ext === 'txt') {
+      text = await file.text();
+    } else if (ext === 'docx' || ext === 'doc') {
+      const buf = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(buf);
+      const docXml = zip.file('word/document.xml');
+      if (!docXml) throw new Error('워드 파일을 읽을 수 없습니다.');
+      const xml = await docXml.async('string');
+      text = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    } else {
+      toast('지원하지 않는 형식입니다. (.docx, .txt만 가능)');
+      return;
+    }
+    document.getElementById('input-text').value = text;
+    updateWordCount();
+    toast('✓ ' + file.name + ' 불러옴');
+  } catch (e) {
+    toast('파일 읽기 실패: ' + e.message);
+  }
+  input.value = '';
 }
 
 // 샘플 불러오기
