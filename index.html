@@ -70,6 +70,9 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
 .copy-btn{font-size:12px;color:var(--text-muted);cursor:pointer;background:none;border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-family:inherit;transition:all .15s}
 .copy-btn:hover{background:var(--accent-primary);color:#fff;border-color:var(--accent-primary)}
 
+/* ── 원문 ── */
+.sent-original{padding:16px 24px;font-size:17px;font-weight:600;color:var(--accent-primary);line-height:1.6;border-bottom:1px solid var(--border);letter-spacing:-.01em}
+
 /* ── 청크 영역 ── */
 .chunks{display:flex;flex-wrap:wrap;padding:20px 24px;gap:0}
 .chunk{flex:0 0 auto;padding:12px 16px;text-align:center;border-right:1px solid var(--border);min-width:80px}
@@ -91,6 +94,7 @@ select{padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-f
 /* ── 숨기기 ── */
 .hide-ko .chunk-ko{visibility:hidden}
 .hide-en .chunk-en{visibility:hidden}
+.hide-en .sent-original{visibility:hidden}
 .hide-tag .chunk-tag{visibility:hidden}
 .hide-vocab .sent-vocab{display:none}
 .hide-trans .sent-trans{display:none}
@@ -392,6 +396,7 @@ function renderCards(data) {
           <span class="pattern-chip">❶ ${esc(s.pattern)}</span>
           <button class="copy-btn" onclick="copySentence(${idx})">복사</button>
         </div>
+        <div class="sent-original">${esc(s.original)}</div>
         <div class="chunks">${chunksHtml}</div>
         <div class="sent-trans"><strong>📘 전체 해석</strong>${esc(s.translation)}</div>
         ${vocabHtml ? `<div class="sent-vocab"><strong>📖 어휘</strong>${vocabHtml}</div>` : ''}
